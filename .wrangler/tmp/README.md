@@ -1,0 +1,1 @@
+This folder contains the built output assets for the worker "qrclaw" generated at 2026-03-18T09:28:45.199Z.

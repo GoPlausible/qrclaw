@@ -1,0 +1,12 @@
+name = "qrclaw"
+main = "src/index.ts"
+compatibility_date = "2025-03-18"
+compatibility_flags = ["nodejs_compat"]
+
+[route]
+pattern = "qrclaw.goplausible.xyz/*"
+zone_id = "592cbc5d1b3eec4db482306cbc966e1d"
+
+[[kv_namespaces]]
+binding = "QRCLAW_KV"
+id = "74ee4e3893d148e099773a33dcd996f8"
