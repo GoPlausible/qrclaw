@@ -1,5 +1,6 @@
 import { PhotonImage } from "@cf-wasm/photon";
 import { generate } from "@juit/qrcode";
+import * as QRCode from "qrcode";
 
 export interface Env {
   QRCLAW_KV: KVNamespace;
@@ -20,23 +21,71 @@ async function generateQrJpegBase64(data: string): Promise<string> {
   return btoa(String.fromCharCode(...new Uint8Array(jpegBytes)));
 }
 
+function generateQrUtf8(data: string): string {
+  // Use QRCode.create() which works in all environments (no browser field issue)
+  const qr = QRCode.create(data, { errorCorrectionLevel: "H" });
+  const size = qr.modules.size;
+  const modules = qr.modules.data;
+  const margin = 2;
+
+  // Inverted block chars for terminal contrast (light-on-dark)
+  const BB = " ";  // both black → space (background shows)
+  const BW = "▄";  // top black, bottom white
+  const WW = "█";  // both white → full block
+  const WB = "▀";  // top white, bottom black
+
+  function get(row: number, col: number): boolean {
+    if (row < 0 || row >= size || col < 0 || col >= size) return false;
+    return Boolean(modules[row * size + col]);
+  }
+
+  let output = "";
+  const hBlank = WW.repeat(size + margin * 2);
+  // Top margin
+  for (let i = 0; i < Math.ceil(margin / 2); i++) output += hBlank + "\n";
+  const vPad = WW.repeat(margin);
+
+  for (let y = 0; y < size; y += 2) {
+    output += vPad;
+    for (let x = 0; x < size; x++) {
+      const top = get(y, x);
+      const bot = get(y + 1, x);
+      if (top && bot) output += BB;
+      else if (top && !bot) output += BW;
+      else if (!top && bot) output += WB;
+      else output += WW;
+    }
+    output += vPad + "\n";
+  }
+  // Bottom margin
+  for (let i = 0; i < Math.floor(margin / 2); i++) output += hBlank + "\n";
+
+  return output.trimEnd();
+}
+
 // ─── HTML smart-link page ────────────────────────────────────────────────────
 
 function buildHTMLPage({
   data,
   uuid,
   qrImageUrl,
+  qrUtf8,
   baseUrl,
 }: {
   data: string;
   uuid: string;
   qrImageUrl: string;
+  qrUtf8: string;
   baseUrl: string;
 }): string {
   const truncated = data.length > 80 ? data.slice(0, 77) + "..." : data;
   const title = `QR Code — ${truncated}`;
   const description = `Scan or click to open: ${truncated}`;
   const pageUrl = `${baseUrl}/q/${uuid}`;
+
+  // Safe embedding in JS string literals
+  const jsData = JSON.stringify(data);
+  const jsUtf8 = JSON.stringify(qrUtf8);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -71,26 +120,91 @@ function buildHTMLPage({
       padding: 2rem;
       border-radius: 12px;
       box-shadow: 0 4px 14px rgba(0,0,0,0.1);
-      max-width: 500px;
+      max-width: 540px;
       margin: 0 auto;
     }
     h1 { font-size: 1.4rem; margin-bottom: 1rem; }
-    .qr { margin-bottom: 1.5rem; }
-    .qr img {
+    .qr-image { margin-bottom: 1rem; }
+    .qr-image img {
       width: 100%;
       max-width: 360px;
       box-shadow: 0 4px 14px #607D8B;
       border-radius: 16px;
     }
+    .qr-utf8 {
+      display: none;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: "Menlo", "DejaVu Sans Mono", "Courier New", monospace;
+      font-size: clamp(0.25rem, 1.2vw, 0.5rem);
+      line-height: 1.15;
+      letter-spacing: 0;
+      padding: 0.5rem;
+      border-radius: 12px;
+      overflow-x: auto;
+      white-space: pre;
+      text-align: center;
+      margin: 0 auto 1rem;
+      box-shadow: 0 4px 14px #607D8B;
+    }
+    .toggle-group {
+      display: inline-flex;
+      background: #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .toggle-btn {
+      padding: 0.45rem 1.1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .toggle-btn.active {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+    }
+    .data-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
     .data {
+      flex: 1;
       font-size: 0.85rem;
       font-family: monospace;
       word-break: break-all;
       background: #f1f5f9;
       padding: 0.75rem;
       border-radius: 6px;
+      text-align: left;
+    }
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
       margin-top: 1rem;
     }
+    .copy-btn {
+      padding: 0.45rem 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+    .copy-btn.copied { background: #dcfce7; border-color: #86efac; color: #166534; }
     .back {
       display: inline-block;
       margin-bottom: 1.25rem;
@@ -118,10 +232,28 @@ function buildHTMLPage({
   <div class="card">
     <a class="back" href="${baseUrl}/">&larr; New QR Code</a>
     <h1>QR Code</h1>
-    <div class="qr">
-      <img src="${qrImageUrl}" alt="QR Code" />
+
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="btn-image" onclick="showView('image')">Image</button>
+      <button class="toggle-btn" id="btn-utf8" onclick="showView('utf8')">UTF-8</button>
     </div>
-    <div class="data">${escapeHtml(data)}</div>
+
+    <div class="qr-image" id="view-image">
+      <img src="${qrImageUrl}" alt="QR Code" id="qr-img" crossorigin="anonymous" />
+    </div>
+    <pre class="qr-utf8" id="view-utf8">${escapeHtml(qrUtf8)}</pre>
+
+    <div class="actions">
+      <button class="copy-btn" onclick="copyImage(this)">Copy Image</button>
+      <button class="copy-btn" onclick="copyText('utf8', this)">Copy UTF-8</button>
+      <button class="copy-btn" onclick="copyText('data', this)">Copy QR Data</button>
+      <button class="copy-btn" onclick="copyText('link', this)">Copy QR Link</button>
+    </div>
+
+    <div class="data-row">
+      <div class="data">${escapeHtml(data)}</div>
+    </div>
+
     <div class="footer">
       <a href="https://goplausible.com" target="_blank" rel="noopener noreferrer">
         <img style="width:120px; height:40px;" src="https://goplausible.mypinata.cloud/ipfs/QmWjvCGPyL9zmA5B84WPqLYF27dL2nFgr1Lw6rMd7CpQPV/images/goPlausible-logo-type-h.png" alt="GoPlausible" />
@@ -132,6 +264,47 @@ function buildHTMLPage({
       <br />&copy; GoPlausible 2025
     </div>
   </div>
+
+  <script>
+    const utf8Text = ${jsUtf8};
+    const dataText = ${jsData};
+    const linkUrl = "${pageUrl}";
+
+    function showView(view) {
+      document.getElementById('view-image').style.display = view === 'image' ? 'block' : 'none';
+      document.getElementById('view-utf8').style.display = view === 'utf8' ? 'block' : 'none';
+      document.getElementById('btn-image').classList.toggle('active', view === 'image');
+      document.getElementById('btn-utf8').classList.toggle('active', view === 'utf8');
+    }
+
+    async function copyImage(btn) {
+      try {
+        const img = document.getElementById('qr-img');
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        flash(btn);
+      } catch { flash(btn, 'Failed'); }
+    }
+
+    async function copyText(which, btn) {
+      const text = which === 'utf8' ? utf8Text : which === 'data' ? dataText : linkUrl;
+      try {
+        await navigator.clipboard.writeText(text);
+        flash(btn);
+      } catch { flash(btn, 'Failed'); }
+    }
+
+    function flash(btn, msg) {
+      const orig = btn.textContent;
+      btn.textContent = msg || 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -271,7 +444,7 @@ function landingPage(baseUrl: string): string {
 </head>
 <body>
   <div class="hero">
-    <div class="logo">QRClaw</div>
+    <div class="logo">&#x1F99E; QRClaw</div>
     <div class="tagline">Instant QR code smart links with rich previews</div>
     <form class="input-group" id="form">
       <input type="text" id="q" placeholder="Paste any URL or text..." autocomplete="off" required />
@@ -280,6 +453,21 @@ function landingPage(baseUrl: string): string {
   </div>
 
   <div class="features">
+    <div class="feature">
+      <div class="feature-icon">&#x1F99E;</div>
+      <div class="feature-title">Solves OpenClaw QRCode</div>
+      <div class="feature-desc">Finally, QR codes that work with OpenClaw</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">&#x1F916;</div>
+      <div class="feature-title">Agentic Ready</div>
+      <div class="feature-desc">Claude Code, Open Code, Copilot &mdash; any agentic CLI and UI</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">&#x1F5BC;</div>
+      <div class="feature-title">UTF-8 &amp; Image</div>
+      <div class="feature-desc">Supports both terminal (UTF-8) and web (image) QR codes</div>
+    </div>
     <div class="feature">
       <div class="feature-icon">&#x26A1;</div>
       <div class="feature-title">Instant</div>
@@ -356,15 +544,25 @@ export default {
 
       const uuid = crypto.randomUUID().replaceAll("-", "");
       const qrBase64 = await generateQrJpegBase64(q);
+      const qrUtf8 = generateQrUtf8(q);
       const qrImageUrl = `${baseUrl}/image/${uuid}.jpeg`;
       const smartLink = `${baseUrl}/q/${uuid}`;
 
-      const html = buildHTMLPage({ data: q, uuid, qrImageUrl, baseUrl });
+      const html = buildHTMLPage({ data: q, uuid, qrImageUrl, qrUtf8, baseUrl });
 
       await Promise.all([
         env.QRCLAW_KV.put(`image--${uuid}`, qrBase64, { expirationTtl: 86400 }),
         env.QRCLAW_KV.put(`page--${uuid}`, html, { expirationTtl: 86400 }),
       ]);
+
+      // Content negotiation: JSON for terminal/API clients, redirect for browsers
+      const accept = request.headers.get("Accept") || "";
+      if (accept.includes("application/json")) {
+        return new Response(
+          JSON.stringify({ link: smartLink, qr: qrUtf8, data: q, expires_in: "24h" }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
 
       return Response.redirect(smartLink, 302);
     }
