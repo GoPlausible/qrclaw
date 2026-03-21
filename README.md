@@ -166,7 +166,49 @@ id = "your-kv-namespace-id"
 
 ## Rate Limiting
 
-Recommended: configure rate limiting via **Cloudflare Dashboard → Security → WAF → Rate limiting rules** to protect against abuse. No code changes needed — it blocks at the edge before the Worker runs.
+- **5 QR codes per minute** per IP address
+- Configured via Cloudflare Dashboard → Security → WAF → Rate limiting rules
+- Blocks at the edge before the Worker runs — no code changes needed
+- Exceeding the limit returns HTTP 429 (Too Many Requests)
+
+## Input Validation
+
+- Input is trimmed of leading/trailing whitespace
+- Empty input returns 400 with a JSON error
+- Maximum input length: **2048 characters** (QR codes with high error correction can't encode more)
+
+## Install the QRClaw Skill
+
+QRClaw includes an agent skill that teaches AI assistants (Claude Code, OpenClaw, Copilot, etc.) how to use the QRClaw API. There are several ways to install it:
+
+### Via ClawHub (OpenClaw)
+
+```bash
+npx clawhub install qrclaw
+```
+
+The skill will be available immediately for your OpenClaw agent to use.
+
+### Via skills.sh
+
+```bash
+npx skills add GoPlausible/qrclaw
+```
+
+This downloads and installs the QRClaw skill into your agent's skill directory.
+
+### Manual Installation
+
+Copy the `skill/` directory from this repo into your agent's skills folder:
+
+```bash
+# Claude Code
+cp -r skill/SKILL.md ~/.claude/skills/qrclaw/SKILL.md
+
+# Or clone and symlink
+git clone https://github.com/GoPlausible/qrclaw.git
+ln -s "$(pwd)/qrclaw/skill" ~/.claude/skills/qrclaw
+```
 
 ## License
 
