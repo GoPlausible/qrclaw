@@ -68,69 +68,50 @@ Response:
 
 Without the `Accept: application/json` header, the endpoint redirects (302) to the smart link page.
 
-## How to Display Results
+## How to Display Results — Channel Awareness
 
-After calling the API, present **both** outputs to the user:
+After calling the API, adapt your response based on the output channel. The UTF-8 QR block is large and only renders well in monospace contexts — don't dump it into chat channels where it will look broken or spammy.
 
-### 1. UTF-8 QR (for terminals and inline display)
+### TUI / Web channels (terminal, web UI, canvas)
 
-Paste the `qr` field inside a code block. The block characters render as a scannable QR in most terminals and monospace-font contexts.
+Show the full output — these environments render monospace block characters correctly:
+
+1. **UTF-8 QR block** — paste the `qr` field inside a code fence
+2. **Data** — the original string encoded in the QR code
+3. **Smart link** — the hosted QR page URL from `link`
+
+Example response:
 
 ````
 ```
-<paste qr field here>
+[paste UTF-8 QR here]
 ```
-````
 
-### 2. Smart link (for sharing)
-
-Provide the `link` URL. The page includes:
-- Scannable QR code image
-- UTF-8 toggle view
-- Copy buttons (image, UTF-8 text, original data, page link)
-- Full Open Graph and Twitter Card metadata for rich previews
-
-### Example agent response format
-
-```
-Here's your QR code:
-
-\`\`\`
-█████████████████████████████████████████████████████████
-██ ▄▄▄▄▄ █  ▀  ▀▀▄ ▄ ██▀ █▄▀█▀█ █▀▄▄▄██▀█ ▀▄ ▀██ ▄▄▄▄▄ ██
-██ █   █ █▀▄██▀█▄▄▀█▀█ █▀ ▄▄▀▄▄ ▀ ▀██▄ █▀  ▀▀▄▀█ █   █ ██
-██ █▄▄▄█ █ ▄█ ▄▀█  █  ▄▀ ▄ ▄▄▄ ▀▄▄▄ ▄▀▀▀ ▄▀  ███ █▄▄▄█ ██
-██▄▄▄▄▄▄▄█▄▀ █▄█▄█▄█ ▀▄█ █ █▄█ ▀▄█ ▀ █ █▄▀▄█▄█▄█▄▄▄▄▄▄▄██
-████▀ ▀▀▄▀▀ █▄▄▀▄█▀ █▀██▀     ▄▄██▀▀█ ▀▀▀▀▄ ▀█▄▀█ ▄ █ ▄██
-███▄▄ █▄▄▀▀▄█▀▀▄██▄▀██     ▄▄██▄█▀  █▀▄█▀ █▄  ▀ █▀▀▀ ▀▄██
-███ █▄▀█▄▄██▀██ ▀▄▀ ▀   ▀█▀███ ▀▀▀ ▄▄▀ ▄▀ █▄█▀█▀▄▀▄ █████
-██▀▀▄ ▄▄▄ ▄▄ █▄ ██▄ ▄▄  ▄▀▄  ▄█▀▄█▄██▄█ ▄▄▀▀█ ▄▄▄ ▀▀ ▄▀██
-██ ▄ ▄█▀▄█▄ ▀ ▄█▄▄▄ ▀▄▀▀▄█  ▄█▄ ▀▀█▄▄█  ▄█▀▄▄▀ ▄▄██ ▄▀▀██
-██▄▄▀▀▀█▄▀█▄▄  ▄▄▀  █   ▀▀▀▀ ▄▀█▄▄█▄ ▄▄▄██▄ ▄█ █▀▄ ██  ██
-██ █▀▀█▀▄ ▄▄▀█ ▀▀▄▄▀ ▀█▄▄█ ▀ ▀▄ ▄ ▀▀ ▄▄ █▀▀▀█ █ ▄▄█  ████
-████ █ ▄▄ █▀██ ██▀█▀  ▀█▀▀█▄▀▄ ▄▄▄▀▀▀▀ ▀ ▄▀▄▀ ▄▄▀▀▄ ▄▀▀██
-██  ▄█ ▄▄▄ ▀█ ▀█▄ ▀█▄ ▀▀█▄ ▄▄▄ ▀▄▄█ ▀██  ▀▄▀▄▄ ▄▄▄   █▀██
-██▀ ▄▄ █▄█ █  ▄█  ▀█ ▀ ▀█▄ █▄█ ▀▀█ ▄█▄▀▀▄ ▄▀▄▀ █▄█ ▀ ▀▀██
-██▀▄▀▄  ▄▄▄▀▄ ██▀ ▄ ▄ █▀▀▄  ▄  █ ▄ ▄▄▀ █▀ █▄▄▄ ▄▄▄▄    ██
-██ ▀▀▄█▀▄ ▄▄▄▀    ▀▀ ▄▀██▄▄▀█▄█ ▄▄▀█▄▄  ▄ ▄▀▄█▄ ▀ ▀ ▄▀███
-████ ▀▄▀▄ ▄ ▀ ▀▄▄ ▄█▄█▄██▄█ ▄ ▀▄ ▀▀██ ▀▀█ ▀█▄▀   ▀██▄▄███
-██ █ ▀▄▄▄ ▄██ ▄▀█  ▀▄ █ ▀▄ ██▄▀█  █  ▀ █▀ ▀██ ▄▀▀▀▄▀   ██
-██  ▄ ▀ ▄ █▀ █ █▄▀ ▄▄ ▀▄█ ▀▀▄▀▀█ █ ▀█▀▄██  ▄█▀█▀████▀ ▄██
-███▀▀█▄ ▄▄▄█▄ ▀████▀▄▀▀█▄█▄▄ ▀▀█ ▄▀▄▄   █ ▀ ▀ ▄██▄ █▀ ▄██
-██▄██ █ ▄██▀ ▄▀█▀▀█▄█▀█▄ █ █▄ ▀█▄▄█ ▄▀█▀  ▀▀▄▄▄▀ ▄▄ ▀ ▄██
-██▄ ▀▄▄▄▄▄█▄█▀▄ ▀ █▀██ ▀▀▀  ▄ ███▄ ▀▀▀█▄▀ ▀▀█ ▀██▀  ▄▄███
-█████▄██▄▄▀▄▄▄▄ ▄▀▄█▀▀█▀▀  ▄▄▄ ▀█▀ █ █▄▀ ▀▄ ██ ▄▄▄ █▀█▀██
-██ ▄▄▄▄▄ ███ ▀ ▀  ▀█▄ ▀██  █▄█ ▀▀ ▄▀▀▄▀▀███▀▀█ █▄█ ▄▀▄ ██
-██ █   █ █▀ ▄▄ ▄▀ ▄    ▄▄▀▄▄ ▄ ▀ ▄▄▄█▄▀▄ ▀  ▀ ▄ ▄▄▄ ▄  ██
-██ █▄▄▄█ ██ █▄▄ █▄▀▄▀██▄▀▀▀█▀▀ ██▄ ▄█▀█▄ █▀▀█▄▄▀▄ ▄  ▀▄██
-██▄▄▄▄▄▄▄███▄██████▄█▄█▄▄██▄██▄█▄███▄▄█▄██▄█▄██▄█████▄███
-█████████████████████████████████████████████████████████
-...
-\`\`\`
-
-Smart link: https://qrclaw.goplausible.xyz/q/abc123...
+Data: `https://example.com`
+Smart QR link: https://qrclaw.goplausible.xyz/q/abc123...
 (expires in 24 hours)
+````
+
+### Social channels (Telegram, Discord, WhatsApp, Signal, Slack, IRC, etc.)
+
+Skip the UTF-8 QR block — it's too bulky for chat and won't render as a scannable image. Show only:
+
+1. **Data** — the original string (useful for wallet deep links, URLs, etc.)
+2. **Smart link** — the hosted page URL, which renders nicely in-app as a clickable preview with the QR code image via Open Graph metadata
+
+Example response:
+
 ```
+Data: https://example.com
+QR code: https://qrclaw.goplausible.xyz/q/abc123...
+```
+
+### How to detect the channel
+
+- If you're running in a **terminal** (CLI agent like Claude Code, OpenClaw, Open Code) → use TUI format
+- If you're rendering in a **web UI** or **canvas** → use TUI format
+- If you're posting to a **messaging platform** or the output will be forwarded to one → use social format
+- When in doubt, **ask the user** or default to TUI format (it includes everything)
 
 ## Implementation Examples
 
