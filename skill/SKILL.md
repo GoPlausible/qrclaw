@@ -182,7 +182,7 @@ Then use `WebFetch` with the discovered URL as shown above.
 - **Input**: any string up to reasonable length (URLs, text, URIs like `algorand://...`, `bitcoin:...`, etc.)
 - **Expiry**: all QR codes and smart links expire after 24 hours
 - **No auth required**: the API is open, no API key needed
-- **Rate limiting**: the service may rate-limit excessive requests; normal usage is fine
+- **Rate limiting**: limited to **5 QR codes per minute** per IP. If you hit the limit, wait before retrying. Avoid generating QR codes in tight loops — batch your requests or add delays between calls
 - **URL encoding**: always URL-encode the `q` parameter — special characters, spaces, `://` etc. must be encoded
 - **The `qr` field uses inverted UTF-8 half-block characters** (`█`, `▀`, `▄`, ` `) which render best on dark backgrounds or in code blocks with monospace fonts
 

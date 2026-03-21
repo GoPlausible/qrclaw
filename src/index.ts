@@ -535,11 +535,25 @@ export default {
 
     // GET /?q=<string> — generate QR + smart link
     if (url.pathname === "/" || url.pathname === "") {
-      const q = url.searchParams.get("q");
-      if (!q) {
+      const rawQ = url.searchParams.get("q");
+      if (!rawQ) {
         return new Response(landingPage(baseUrl), {
           headers: { "Content-Type": "text/html; charset=utf-8" },
         });
+      }
+
+      const q = rawQ.trim();
+      if (!q) {
+        return new Response(
+          JSON.stringify({ error: "Query parameter 'q' must not be empty" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (q.length > 2048) {
+        return new Response(
+          JSON.stringify({ error: "Input too long — maximum 2048 characters" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
       }
 
       const uuid = crypto.randomUUID().replaceAll("-", "");
