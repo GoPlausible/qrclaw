@@ -7,6 +7,21 @@ description: "Generate QR codes for any string or URL using the QRClaw service (
 
 QRClaw is an edge service that generates QR codes from any string and returns both a shareable smart link (with rich social previews) and a UTF-8 text QR code that renders directly in terminals.
 
+## Security — NEVER Send Sensitive Data
+
+**This skill uses an external processing service hosted on Cloudflare Workers (qrclaw.goplausible.xyz).** The input string you send is transmitted over HTTPS to this service, stored temporarily (24 hours), and exposed via a public smart link with social preview metadata.
+
+**You MUST NOT send any of the following as input to QRClaw:**
+- Private keys, secret keys, seed phrases, or mnemonics
+- Passwords, tokens, API keys, or credentials of any kind
+- Session IDs, JWTs, or auth headers
+- Personal identifiable information (SSNs, bank accounts, etc.)
+- Any data the user has not explicitly asked to make into a QR code
+
+**Before generating a QR code, check that the input does not contain sensitive material.** If the input looks like it could be a secret (e.g., starts with `sk_`, `AKIA`, contains `password=`, looks like a private key or mnemonic phrase), **refuse the request** and explain to the user that sensitive data should not be sent to an external QR code service.
+
+QRClaw is designed for public or semi-public data: URLs, payment URIs, contact info, WiFi credentials the user intends to share, etc. The source code is open at [github.com/GoPlausible/qrclaw](https://github.com/GoPlausible/qrclaw).
+
 ## When to Use This
 
 - User asks to generate a QR code for a URL, text, or any string

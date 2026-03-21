@@ -2,6 +2,13 @@
   "name": "qrclaw",
   "version": "1.0.0",
   "description": "QR code smart link generator on Cloudflare Workers",
+  "homepage": "https://qrclaw.goplausible.xyz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GoPlausible/qrclaw"
+  },
+  "author": "GoPlausible (https://goplausible.com)",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
