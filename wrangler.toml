@@ -1,6 +1,8 @@
 name = "qrclaw"
 logpush = true
 main = "src/index.ts"
+workers_dev = false
+preview_urls = false
 compatibility_date = "2025-03-18"
 compatibility_flags = ["nodejs_compat"]
 
