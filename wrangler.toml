@@ -14,3 +14,7 @@ id = "74ee4e3893d148e099773a33dcd996f8"
 
 [observability]
 enabled = true
+
+# No per-request records: their URLs carry identifiers (session ids, request payloads); the worker's own logs and exceptions are kept.
+[observability.logs]
+invocation_logs = false
